@@ -1,0 +1,38 @@
+name: collect-manual
+on:
+  workflow_dispatch:
+    inputs:
+      symbol:
+        description: "Symbol (e.g., ARBUSDT)"
+        required: true
+        default: "ARBUSDT"
+      jobs:
+        description: "Comma-separated job numbers to run (1-10). Leave blank for ALL."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collect-manual-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      SYMBOL: ${{ inputs.symbol }}
+      JOBS: ${{ inputs.jobs }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - run: python collector.py
+      - name: Commit & Push
+        run: |
+          git config user.name "gh-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --quiet && echo "no changes" || (git commit -m "manual: ${SYMBOL} jobs=${JOBS}" && git push)
